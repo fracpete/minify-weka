@@ -322,6 +322,7 @@ public class Weka {
    * @return		null if successful, otherwise error message
    */
   protected String build(File dir) {
+    String			error;
     String[] 			cmd;
     ProcessBuilder 		builder;
     CollectingProcessOutput 	output;
@@ -337,6 +338,14 @@ public class Weka {
     output = new CollectingProcessOutput();
     try {
       output.monitor(builder);
+      if (!output.hasSucceeded()) {
+        error = "\nExit code: " + output.getExitCode();
+        if (output.getStdErr().length() > 0)
+          error += "\nStderr:\n" + output.getStdErr();
+        if (output.getStdOut().length() > 0)
+          error += "\nStdout:\n" + output.getStdOut();
+        return error;
+      }
     }
     catch (Exception e) {
       return "Failed to execute: " + builder.toString() + "\n" + e;
