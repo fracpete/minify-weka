@@ -1,11 +1,14 @@
 # minify-weka
 Tool for reducing Weka to a minimal subset of classes.
 
+The `bin` directory of the zip file contains a batch file and a bash script
+for making execution easier.
+
 ## Command-line help
 When using `-h` or `--help` you get the following help screen:
 
 ```
-usage: com.github.fracpete.deps4j.MinDeps
+usage: com.github.fracpete.minify.Weka
        [-h] --java-home JAVAHOME --classes CLASSES
        [--additional ADDITIONAL] --input INPUT --output OUTPUT [--test]
        packages [packages ...]
@@ -87,6 +90,6 @@ Use the following dependency in your `pom.xml`:
     <dependency>
       <groupId>com.github.fracpete</groupId>
       <artifactId>minify-weka</artifactId>
-      <version>0.0.1</version>
+      <version>0.0.2</version>
     </dependency>
 ```
