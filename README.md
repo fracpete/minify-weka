@@ -37,7 +37,7 @@ optional arguments:
 
 ## Example
 
-Classes to include:
+Classes to include (`classes_38.txt`):
 
 ```
 weka.classifiers.Evaluation
@@ -53,8 +53,8 @@ weka.filters.supervised.instance.Resample
 ```
 
 Classes that cannot be located with [deps4j](https://github.com/fracpete/deps4j)
-and must be supplied separately (empty lines and lines starting with `#` get 
-ignored):
+(`additional_38.txt`) and must be supplied separately (empty lines and lines 
+starting with `#` get ignored):
 
 ```
 # expressions
@@ -93,3 +93,7 @@ Use the following dependency in your `pom.xml`:
       <version>0.0.2</version>
     </dependency>
 ```
+
+## Releases
+
+* [0.0.2](https://github.com/fracpete/minify-weka/releases/download/minify-weka-0.0.2/minify-weka-0.0.2-bin.zip)
