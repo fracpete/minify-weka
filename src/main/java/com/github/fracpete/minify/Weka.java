@@ -27,8 +27,11 @@ import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Minifies a Weka build environment using a specified minimum set of classes.
@@ -49,8 +52,17 @@ public class Weka {
   /** the input build env. */
   protected File m_Input;
 
+  /** the absolute input path. */
+  protected String m_InputAbs;
+
+  /** packages to keep. */
+  protected List<String> m_Packages;
+
   /** the output build env. */
   protected File m_Output;
+
+  /** the absolute output path. */
+  protected String m_OutputAbs;
 
   /** whether to test the build environment. */
   protected boolean m_Test;
@@ -65,7 +77,10 @@ public class Weka {
     m_ClassesFile    = null;
     m_AdditionalFile = null;
     m_Input          = null;
+    m_InputAbs       = null;
+    m_Packages       = new ArrayList<>();
     m_Output         = null;
+    m_OutputAbs      = null;
     m_Test           = false;
   }
 
@@ -130,6 +145,10 @@ public class Weka {
    */
   public void setInput(File value) {
     m_Input = value;
+    if (m_Input == null)
+      m_InputAbs = null;
+    else
+      m_InputAbs = m_Input.getAbsolutePath();
   }
 
   /**
@@ -142,12 +161,34 @@ public class Weka {
   }
 
   /**
+   * Sets the packages to keep.
+   *
+   * @param value	the packages
+   */
+  public void setPackages(List<String> value) {
+    m_Packages.addAll(value);
+  }
+
+  /**
+   * Returns the packages to keep.
+   *
+   * @return		the packages
+   */
+  public List<String> getPackages() {
+    return m_Packages;
+  }
+
+  /**
    * Sets the directory for the output build environment.
    *
    * @param value	the directory
    */
   public void setOutput(File value) {
     m_Output = value;
+    if (m_Output == null)
+      m_OutputAbs = null;
+    else
+      m_OutputAbs = m_Output.getAbsolutePath();
   }
 
   /**
@@ -222,6 +263,11 @@ public class Weka {
       .required(false)
       .dest("test")
       .help("Optional testing of the minified build environment.");
+    parser.addArgument("package")
+      .dest("packages")
+      .required(true)
+      .nargs("+")
+      .help("The packages to keep, eg 'weka'.");
 
     try {
       ns = parser.parseArgs(options);
@@ -235,16 +281,11 @@ public class Weka {
     setClassesFile(ns.get("classes"));
     setAdditionalFile(ns.get("additional"));
     setInput(ns.get("input"));
+    setPackages(ns.getList("packages"));
     setOutput(ns.get("output"));
     setTest( ns.getBoolean("test"));
 
     return true;
-  }
-
-  /**
-   * Initializes the execution.
-   */
-  protected void initialize() {
   }
 
   /**
@@ -268,6 +309,9 @@ public class Weka {
     if (!m_Input.isDirectory())
       return "Input build environment points to a file: " + m_Input;
 
+    if (m_Output == null)
+      return "No output directory supplied!";
+
     return null;
   }
 
@@ -289,6 +333,7 @@ public class Weka {
     };
     builder = new ProcessBuilder();
     builder.command(cmd);
+    builder.directory(dir);
     output = new CollectingProcessOutput();
     try {
       output.monitor(builder);
@@ -301,14 +346,211 @@ public class Weka {
   }
 
   /**
+   * Determines the classes to keep.
+   *
+   * @param classes	to fill in the classes
+   * @return		null if successful, otherwise error message
+   */
+  protected String determineClasses(List<String> classes) {
+    MinDeps	min;
+    String	msg;
+
+    // determine minimum set of classes
+    min = new MinDeps();
+    min.setJavaHome(getJavaHome());
+    min.setPackages(new ArrayList<>(m_Packages));
+    min.setClassPath(m_Input.getAbsolutePath() + File.separator + "dist" + File.separator + "*");
+    min.setClassesFile(m_ClassesFile);
+    min.setAdditionalFile(m_AdditionalFile);
+    msg = min.execute();
+    if (msg != null)
+      return "Failed to execute " + MinDeps.class.getName() + ": " + msg;
+
+    classes.addAll(min.getDependencies());
+
+    return null;
+  }
+
+  /**
+   * Prepares the output directory, either creating or emptying it.
+   *
+   * @return		null if successful, otherwise error message
+   */
+  protected String prepareOutputDir() {
+    File[]	files;
+    String	msg;
+    File	libDir;
+
+    files = m_Output.listFiles();
+    if (files == null) {
+      System.err.println("Creating output dir...");
+      if (m_Output.mkdirs())
+        return "Failed to create output directory: " + m_Output;
+    }
+    else {
+      if (files.length > 0) {
+	System.err.println("Cleaning output dir...");
+	for (File file: files) {
+	  if (file.getName().equals("") || file.getName().equals(".."))
+	    continue;
+	  if (file.isDirectory()) {
+	    try {
+	      FileUtils.deleteDirectory(file);
+	    }
+	    catch (Exception e) {
+	      return "Failed to delete directory: " + file + "\n" + e;
+	    }
+	  }
+	  else {
+	    if (!file.delete())
+	      return "Failed to delete file: " + file;
+	  }
+	}
+      }
+    }
+
+    // build.xml
+    msg = copyFile(new File(m_InputAbs + File.separator + "build.xml"));
+    if (msg != null)
+      return msg;
+
+    // parsers.xml
+    msg = copyFile(new File(m_InputAbs + File.separator + "parsers.xml"));
+    if (msg != null)
+      return msg;
+
+    // libs
+    libDir = new File(m_InputAbs + File.separator + "lib");
+    files = libDir.listFiles();
+    if (files != null) {
+      for (File file : files) {
+	if (file.getName().equals("") || file.getName().equals(".."))
+	  continue;
+	if (file.isDirectory())
+	  continue;
+	msg = copyFile(file);
+	if (msg != null)
+	  return msg;
+      }
+    }
+
+
+    return null;
+  }
+
+  /**
+   * Copies the specified input file into the output directory.
+   *
+   * @param inputFile	the file to copy
+   * @return		null if successful, otherwise error message
+   */
+  protected String copyFile(File inputFile) {
+    File	outputFile;
+    String	subPath;
+
+    if (inputFile.exists()) {
+      subPath = inputFile.getAbsolutePath().substring(m_InputAbs.length());
+      outputFile = new File(m_OutputAbs + File.separator + subPath);
+      try {
+	FileUtils.copyFile(inputFile, outputFile);
+      }
+      catch (Exception e) {
+	return "Failed to copy file: " + inputFile + " -> " + outputFile + "\n" + e;
+      }
+    }
+    else {
+      System.err.println("Missing: " + inputFile);
+    }
+
+    return null;
+  }
+
+  /**
+   * Generates a class file name from the class name.
+   *
+   * @param cls		the class to convert
+   * @return		the filename
+   */
+  protected File classToFile(String cls) {
+    return new File(
+      m_InputAbs
+	+ File.separator + "src" + File.separator + "main" + File.separator + "java"
+	+ File.separator + cls.replace(".", File.separator) + ".java");
+  }
+
+  /**
+   * Copies the classes and resources across.
+   *
+   * @param classes	the classes to copy
+   * @return		null if successful, otherwise error message
+   */
+  protected String copy(List<String> classes) {
+    List<File> 		inputDirs;
+    File[]		files;
+    File		inFile;
+    File		inDir;
+    String		msg;
+
+    // classes
+    inputDirs = new ArrayList<>();
+    for (String cls: classes) {
+      inFile = classToFile(cls);
+      // record directories
+      inDir = inFile.getParentFile();
+      if (!inputDirs.contains(inDir))
+        inputDirs.add(inDir);
+      // copy
+      msg = copyFile(inFile);
+      if (msg != null)
+        return msg;
+    }
+
+    // other resources
+    System.err.println("Copying resources...");
+    for (File inputDir : inputDirs) {
+      files = inputDir.listFiles((File dir, String name) -> {
+	  return !name.equals(".") && !name.equals("..") && !name.endsWith(".java");
+      });
+      if (files != null) {
+        System.err.println("- " + inputDir);
+	for (File file: files) {
+	  if (file.isDirectory())
+	    continue;
+	  msg = copyFile(file);
+	  if (msg != null)
+	    return msg;
+	}
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Minifies the build environment.
    *
    * @return		null if successful, otherwise error message
    */
   protected String minify() {
-    MinDeps		min;
+    String		msg;
+    List<String>	classes;
 
-    // TODO
+    // minimal set of classes
+    System.err.println("Determining minimal set of classes...");
+    classes = new ArrayList<>();
+    msg     = determineClasses(classes);
+    if (msg != null)
+      return msg;
+
+    // prepare the output directory
+    msg = prepareOutputDir();
+    if (msg != null)
+      return msg;
+
+    // copy the classes/resources across
+    msg = copy(classes);
+    if (msg != null)
+      return msg;
 
     return null;
   }
@@ -320,8 +562,6 @@ public class Weka {
    */
   public String execute() {
     String		result;
-
-    initialize();
 
     result = check();
 
@@ -335,9 +575,11 @@ public class Weka {
       result = minify();
 
     if (result == null) {
-      result = build(m_Output);
-      if (result != null)
-        result = "Failed to build minified build environment: " + result;
+      if (m_Test) {
+	result = build(m_Output);
+	if (result != null)
+	  result = "Failed to build minified build environment: " + result;
+      }
     }
 
     return result;
