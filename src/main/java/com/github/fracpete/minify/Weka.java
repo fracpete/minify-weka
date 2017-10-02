@@ -229,7 +229,7 @@ public class Weka {
     ArgumentParser parser;
     Namespace ns;
 
-    parser = ArgumentParsers.newArgumentParser(MinDeps.class.getName());
+    parser = ArgumentParsers.newArgumentParser(Weka.class.getName());
     parser.addArgument("--java-home")
       .type(Arguments.fileType().verifyExists().verifyIsDirectory())
       .dest("javahome")
