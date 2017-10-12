@@ -75,8 +75,8 @@ java com.github.fracpete.minify.Weka
   --java-home /somepath/jdk/jdk1.8.0_144-64bit \
   --input /someplace/weka-3.8/weka/ \
   --output /elsewhere/wekaout/ \
-  --classes /home/fracpete/temp/deps4j/classes_38.txt \
-  --additional /home/fracpete/temp/deps4j/additional_38.txt \
+  --classes /elsewhere/classes_38.txt \
+  --additional /elsewhere/additional_38.txt \
   weka
 ```
 
