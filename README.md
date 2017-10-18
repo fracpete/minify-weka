@@ -96,4 +96,5 @@ Use the following dependency in your `pom.xml`:
 The `bin` directory of the zip file contains a batch file and a bash script
 for making execution easier.
 
+* [0.0.3](https://github.com/fracpete/minify-weka/releases/download/minify-weka-0.0.3/minify-weka-0.0.3-bin.zip)
 * [0.0.2](https://github.com/fracpete/minify-weka/releases/download/minify-weka-0.0.2/minify-weka-0.0.2-bin.zip)
