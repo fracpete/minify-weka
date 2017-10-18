@@ -87,7 +87,7 @@ Use the following dependency in your `pom.xml`:
     <dependency>
       <groupId>com.github.fracpete</groupId>
       <artifactId>minify-weka</artifactId>
-      <version>0.0.2</version>
+      <version>0.0.3</version>
     </dependency>
 ```
 
