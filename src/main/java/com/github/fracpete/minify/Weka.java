@@ -15,7 +15,7 @@
 
 /*
  * Weka.java
- * Copyright (C) 2017 University of Waikato, Hamilton, NZ
+ * Copyright (C) 2017-2018 University of Waikato, Hamilton, NZ
  */
 
 package com.github.fracpete.minify;
@@ -389,6 +389,7 @@ public class Weka {
     File[]	files;
     String	msg;
     File	libDir;
+    File	resDir;
 
     files = m_Output.listFiles();
     if (files == null) {
@@ -440,6 +441,23 @@ public class Weka {
 	msg = copyFile(file);
 	if (msg != null)
 	  return msg;
+      }
+    }
+
+    // resources dir?
+    resDir = new File(m_InputAbs + File.separator + "resources");
+    if (resDir.exists() && resDir.isDirectory()) {
+      files = resDir.listFiles();
+      if (files != null) {
+        for (File file : files) {
+          if (file.getName().equals("") || file.getName().equals(".."))
+            continue;
+          if (file.isDirectory())
+            continue;
+          msg = copyFile(file);
+          if (msg != null)
+            return msg;
+        }
       }
     }
 

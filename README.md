@@ -1,6 +1,8 @@
 # minify-weka
 Tool for reducing Weka to a minimal subset of classes.
 
+Tested with: 3.6, 3.8 and 3.9
+
 ## Command-line help
 When using `-h` or `--help` you get the following help screen:
 
