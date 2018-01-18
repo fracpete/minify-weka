@@ -29,9 +29,18 @@ import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.apache.commons.io.FileUtils;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * Minifies a Weka build environment using a specified minimum set of classes.
@@ -554,6 +563,172 @@ public class Weka {
   }
 
   /**
+   * Closes the reader.
+   *
+   * @param reader	the reader
+   */
+  protected void closeQuietly(Reader reader) {
+    if (reader != null) {
+      try {
+        reader.close();
+      }
+      catch (Exception e) {
+        // ignored
+      }
+    }
+  }
+
+  /**
+   * Closes the writer.
+   *
+   * @param writer	the writer
+   */
+  protected void closeQuietly(Writer writer) {
+    if (writer != null) {
+      try {
+        writer.flush();
+        writer.close();
+      }
+      catch (Exception e) {
+        // ignored
+      }
+    }
+  }
+
+  /**
+   * Loads the properties file.
+   *
+   * @param file	the file
+   * @return		the props, null if failed to read
+   */
+  protected Properties loadProps(File file) {
+    Properties		result;
+    FileReader		freader;
+    BufferedReader	breader;
+
+    result = new Properties();
+    freader = null;
+    breader = null;
+    try {
+      freader = new FileReader(file);
+      breader = new BufferedReader(freader);
+      result.load(breader);
+    }
+    catch (Exception e) {
+      System.err.println("Failed to read props from: " + file);
+      e.printStackTrace();
+      result = null;
+    }
+    finally {
+      closeQuietly(breader);
+      closeQuietly(freader);
+    }
+
+    return result;
+  }
+
+  /**
+   * Saves the props to the file.
+   *
+   * @param props	the props to save
+   * @param file	the file to save to
+   * @return		true if successful
+   */
+  protected boolean storeProps(Properties props, File file) {
+    boolean		result;
+    FileWriter		fwriter;
+    BufferedWriter	bwriter;
+
+    result = true;
+    fwriter = null;
+    bwriter = null;
+    try {
+      fwriter = new FileWriter(file);
+      bwriter = new BufferedWriter(fwriter);
+      props.store(bwriter, null);
+    }
+    catch (Exception e) {
+      System.err.println("Failed to store props in: " + file);
+      e.printStackTrace();
+    }
+    finally {
+      closeQuietly(bwriter);
+      closeQuietly(fwriter);
+    }
+
+    return result;
+  }
+
+  /**
+   * Updates some props files according to the final class list.
+   *
+   * @param classes	the final classes
+   * @return		null if successful, otherwise error message
+   */
+  protected String updateProps(List<String> classes) {
+    String		result;
+    String		propsName;
+    File		file;
+    String		baseDir;
+    Properties		props;
+    List<String>	delete;
+    Set<String>		cache;
+
+    result = null;
+
+    cache   = new HashSet<>(classes);
+    delete  = new ArrayList<>();
+    baseDir = m_OutputAbs + File.separator + "src" + File.separator + "main" + File.separator + "java";
+
+    // GenericPropertiesCreator.props
+    propsName = "weka|gui|GenericPropertiesCreator.props";
+    file = new File(baseDir + File.separator + propsName.replace("|", File.separator));
+    delete.clear();
+    if (file.exists()) {
+      props = loadProps(file);
+      if (props == null)
+        result = "Failed to load props: " + file;
+      if (result == null) {
+	for (String key : props.stringPropertyNames()) {
+	  if (!cache.contains(key))
+	    delete.add(key);
+	}
+	if (delete.size() > 0) {
+	  for (String key : delete)
+	    props.remove(key);
+	  if (!storeProps(props, file))
+	    result = "Failed to update props: " + file;
+	}
+      }
+    }
+
+    // GUIEditors.props
+    propsName = "weka|gui|GUIEditors.props";
+    file = new File(baseDir + File.separator + propsName.replace("|", File.separator));
+    delete.clear();
+    if (file.exists()) {
+      props = loadProps(file);
+      if (props == null)
+        result = "Failed to load props: " + file;
+      if (result == null) {
+	for (String key : props.stringPropertyNames()) {
+	  key = key.replace("[]", "");
+	  if (!cache.contains(key))
+	    delete.add(key);
+	}
+	if (delete.size() > 0) {
+	  for (String key : delete)
+	    props.remove(key);
+	  if (!storeProps(props, file))
+	    result = "Failed to update props: " + file;
+	}
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Minifies the build environment.
    *
    * @return		null if successful, otherwise error message
@@ -576,6 +751,11 @@ public class Weka {
 
     // copy the classes/resources across
     msg = copy(classes);
+    if (msg != null)
+      return msg;
+
+    // update props files
+    msg = updateProps(classes);
     if (msg != null)
       return msg;
 
