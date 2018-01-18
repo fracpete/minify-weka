@@ -1,5 +1,7 @@
 # minify-weka
-Tool for reducing Weka to a minimal subset of classes.
+Tool for reducing Weka to a minimal subset of classes. 
+Currently updates the `GUIEditors.props` and `GenericPropertiesCreator.props`
+properties files.
 
 Tested with: 3.6, 3.8 and 3.9
 
@@ -89,7 +91,7 @@ Use the following dependency in your `pom.xml`:
     <dependency>
       <groupId>com.github.fracpete</groupId>
       <artifactId>minify-weka</artifactId>
-      <version>0.0.4</version>
+      <version>0.0.5</version>
     </dependency>
 ```
 
@@ -98,6 +100,7 @@ Use the following dependency in your `pom.xml`:
 The `bin` directory of the zip file contains a batch file and a bash script
 for making execution easier.
 
+* [0.0.5](https://github.com/fracpete/minify-weka/releases/download/minify-weka-0.0.5/minify-weka-0.0.5-bin.zip)
 * [0.0.4](https://github.com/fracpete/minify-weka/releases/download/minify-weka-0.0.4/minify-weka-0.0.4-bin.zip)
 * [0.0.3](https://github.com/fracpete/minify-weka/releases/download/minify-weka-0.0.3/minify-weka-0.0.3-bin.zip)
 * [0.0.2](https://github.com/fracpete/minify-weka/releases/download/minify-weka-0.0.2/minify-weka-0.0.2-bin.zip)
