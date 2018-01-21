@@ -28,6 +28,7 @@ import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.SystemUtils;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -51,6 +52,9 @@ public class Weka {
 
   /** the java home directory to use. */
   protected File m_JavaHome;
+
+  /** the ant home directory to use. */
+  protected File m_AntHome;
 
   /** the file with classes to determine the minimum dependencies for. */
   protected File m_ClassesFile;
@@ -83,6 +87,7 @@ public class Weka {
     super();
 
     m_JavaHome       = null;
+    m_AntHome        = null;
     m_ClassesFile    = null;
     m_AdditionalFile = null;
     m_Input          = null;
@@ -109,6 +114,43 @@ public class Weka {
    */
   public File getJavaHome() {
     return m_JavaHome;
+  }
+
+  /**
+   * Sets the ant home directory.
+   *
+   * @param value	the directory
+   */
+  public void setAntHome(File value) {
+    m_AntHome = value;
+  }
+
+  /**
+   * Returns the ant home directory.
+   *
+   * @return		the directory
+   */
+  public File getAntHome() {
+    return m_AntHome;
+  }
+
+  /**
+   * Returns the actual ant to use.
+   *
+   * @return		the script
+   */
+  protected String ant() {
+    String	result;
+
+    if (m_AntHome.getName().equals("."))
+      result = "ant";
+    else
+      result = m_AntHome.getAbsolutePath() + File.separator + "bin" + File.separator + "ant";
+
+    if (SystemUtils.IS_OS_WINDOWS)
+      result += ".bat";
+
+    return result;
   }
 
   /**
@@ -244,6 +286,12 @@ public class Weka {
       .dest("javahome")
       .required(true)
       .help("The java home directory of the JDK that includes the jdeps binary, default is taken from JAVA_HOME environment variable.");
+    parser.addArgument("--ant-home")
+      .type(Arguments.fileType().verifyExists().verifyIsDirectory())
+      .dest("anthome")
+      .required(false)
+      .setDefault(new File("."))
+      .help("The ant home directory (above the 'bin' directory), if not on PATH.");
     parser.addArgument("--classes")
       .type(Arguments.fileType().verifyExists().verifyIsFile().verifyCanRead())
       .dest("classes")
@@ -287,6 +335,7 @@ public class Weka {
     }
 
     setJavaHome(ns.get("javahome"));
+    setAntHome(ns.get("anthome"));
     setClassesFile(ns.get("classes"));
     setAdditionalFile(ns.get("additional"));
     setInput(ns.get("input"));
@@ -303,10 +352,18 @@ public class Weka {
    * @return		null if successful, otherwise error message
    */
   protected String check() {
+    File	dir;
+
     if (!m_JavaHome.exists())
       return "Java home directory does not exist: " + m_JavaHome;
     if (!m_JavaHome.isDirectory())
       return "Java home does not point to a directory: " + m_JavaHome;
+
+    if (!m_AntHome.getName().equals(".")) {
+      dir = new File(m_AntHome.getAbsolutePath() + File.separator + "bin");
+      if (!dir.exists())
+        return "Ant directory does not exist: " + dir;
+    }
 
     if (!m_ClassesFile.exists())
       return "File with class names does not exist: " + m_ClassesFile;
@@ -337,7 +394,7 @@ public class Weka {
     CollectingProcessOutput 	output;
 
     cmd = new String[]{
-      "ant",
+      ant(),
       "clean",
       "exejar",
     };

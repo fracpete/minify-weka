@@ -10,9 +10,9 @@ When using `-h` or `--help` you get the following help screen:
 
 ```
 usage: com.github.fracpete.minify.Weka
-       [-h] --java-home JAVAHOME --classes CLASSES
-       [--additional ADDITIONAL] --input INPUT --output OUTPUT [--test]
-       packages [packages ...]
+       [-h] --java-home JAVAHOME [--ant-home ANTHOME]
+       --classes CLASSES [--additional ADDITIONAL] --input INPUT
+       --output OUTPUT [--test] packages [packages ...]
 
 positional arguments:
   packages               The packages to keep, eg 'weka'.
@@ -22,6 +22,8 @@ optional arguments:
   --java-home JAVAHOME   The java home directory  of  the JDK that includes
                          the jdeps binary, default  is taken from JAVA_HOME
                          environment variable.
+  --ant-home ANTHOME     The  ant   home   directory   (above   the   'bin'
+                         directory), if not on PATH.
   --classes CLASSES      The file containing the  classes  to determine the
                          dependencies for. Empty  lines  and lines starting
                          with # get ignored.
