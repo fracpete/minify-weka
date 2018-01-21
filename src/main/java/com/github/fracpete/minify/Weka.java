@@ -27,16 +27,11 @@ import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
-import org.apache.commons.io.FileUtils;
+import nz.ac.waikato.cms.core.FileUtils;
+import nz.ac.waikato.cms.core.PropsUtils;
 import org.apache.commons.lang3.SystemUtils;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.Reader;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -471,7 +466,7 @@ public class Weka {
 	    continue;
 	  if (file.isDirectory()) {
 	    try {
-	      FileUtils.deleteDirectory(file);
+	      FileUtils.delete(file);
 	    }
 	    catch (Exception e) {
 	      return "Failed to delete directory: " + file + "\n" + e;
@@ -545,7 +540,8 @@ public class Weka {
       subPath = inputFile.getAbsolutePath().substring(m_InputAbs.length());
       outputFile = new File(m_OutputAbs + File.separator + subPath);
       try {
-	FileUtils.copyFile(inputFile, outputFile);
+        outputFile.getParentFile().mkdirs();
+	FileUtils.copyOrMove(inputFile, outputFile, false, false);
       }
       catch (Exception e) {
 	return "Failed to copy file: " + inputFile + " -> " + outputFile + "\n" + e;
@@ -602,7 +598,7 @@ public class Weka {
     System.err.println("Copying resources...");
     for (File inputDir : inputDirs) {
       files = inputDir.listFiles((File dir, String name) -> {
-	  return !name.equals(".") && !name.equals("..") && !name.endsWith(".java");
+	return !name.equals(".") && !name.equals("..") && !name.endsWith(".java");
       });
       if (files != null) {
         System.err.println("- " + inputDir);
@@ -617,103 +613,6 @@ public class Weka {
     }
 
     return null;
-  }
-
-  /**
-   * Closes the reader.
-   *
-   * @param reader	the reader
-   */
-  protected void closeQuietly(Reader reader) {
-    if (reader != null) {
-      try {
-        reader.close();
-      }
-      catch (Exception e) {
-        // ignored
-      }
-    }
-  }
-
-  /**
-   * Closes the writer.
-   *
-   * @param writer	the writer
-   */
-  protected void closeQuietly(Writer writer) {
-    if (writer != null) {
-      try {
-        writer.flush();
-        writer.close();
-      }
-      catch (Exception e) {
-        // ignored
-      }
-    }
-  }
-
-  /**
-   * Loads the properties file.
-   *
-   * @param file	the file
-   * @return		the props, null if failed to read
-   */
-  protected Properties loadProps(File file) {
-    Properties		result;
-    FileReader		freader;
-    BufferedReader	breader;
-
-    result = new Properties();
-    freader = null;
-    breader = null;
-    try {
-      freader = new FileReader(file);
-      breader = new BufferedReader(freader);
-      result.load(breader);
-    }
-    catch (Exception e) {
-      System.err.println("Failed to read props from: " + file);
-      e.printStackTrace();
-      result = null;
-    }
-    finally {
-      closeQuietly(breader);
-      closeQuietly(freader);
-    }
-
-    return result;
-  }
-
-  /**
-   * Saves the props to the file.
-   *
-   * @param props	the props to save
-   * @param file	the file to save to
-   * @return		true if successful
-   */
-  protected boolean storeProps(Properties props, File file) {
-    boolean		result;
-    FileWriter		fwriter;
-    BufferedWriter	bwriter;
-
-    result = true;
-    fwriter = null;
-    bwriter = null;
-    try {
-      fwriter = new FileWriter(file);
-      bwriter = new BufferedWriter(fwriter);
-      props.store(bwriter, null);
-    }
-    catch (Exception e) {
-      System.err.println("Failed to store props in: " + file);
-      e.printStackTrace();
-    }
-    finally {
-      closeQuietly(bwriter);
-      closeQuietly(fwriter);
-    }
-
-    return result;
   }
 
   /**
@@ -742,8 +641,8 @@ public class Weka {
     file = new File(baseDir + File.separator + propsName.replace("|", File.separator));
     delete.clear();
     if (file.exists()) {
-      props = loadProps(file);
-      if (props == null)
+      props = new Properties();
+      if (!PropsUtils.load(props, file.getAbsolutePath()))
         result = "Failed to load props: " + file;
       if (result == null) {
 	for (String key : props.stringPropertyNames()) {
@@ -753,7 +652,7 @@ public class Weka {
 	if (delete.size() > 0) {
 	  for (String key : delete)
 	    props.remove(key);
-	  if (!storeProps(props, file))
+	  if (!PropsUtils.save(props, file.getAbsolutePath()))
 	    result = "Failed to update props: " + file;
 	}
       }
@@ -764,8 +663,8 @@ public class Weka {
     file = new File(baseDir + File.separator + propsName.replace("|", File.separator));
     delete.clear();
     if (file.exists()) {
-      props = loadProps(file);
-      if (props == null)
+      props = new Properties();
+      if (!PropsUtils.load(props, file.getAbsolutePath()))
         result = "Failed to load props: " + file;
       if (result == null) {
 	for (String key : props.stringPropertyNames()) {
@@ -776,7 +675,7 @@ public class Weka {
 	if (delete.size() > 0) {
 	  for (String key : delete)
 	    props.remove(key);
-	  if (!storeProps(props, file))
+	  if (!PropsUtils.save(props, file.getAbsolutePath()))
 	    result = "Failed to update props: " + file;
 	}
       }
